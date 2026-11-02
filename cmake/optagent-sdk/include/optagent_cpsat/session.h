@@ -32,7 +32,8 @@ class OPTAGENT_CPSAT_EXPORT Session final {
   // Borrow model/parameters/observer until return. Observer responses are only
   // valid during the call; copy explicitly to retain them. Internal and
   // callback exceptions become kException and an optional best-effort error
-  // message.
+  // message after native teardown. Callbacks may run on native workers; protect
+  // application state shared with other threads.
   RunStatus Run(const operations_research::sat::CpModelProto& model,
                 const operations_research::sat::SatParameters& parameters,
                 const Observer& observer, Response* response,

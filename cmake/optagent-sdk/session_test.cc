@@ -1,7 +1,9 @@
 #include "optagent_cpsat/session.h"
 
 #include <atomic>
+#include <initializer_list>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include "ortools/sat/cp_model.pb.h"
@@ -55,5 +57,15 @@ int main() {
           &response, &error) != sdk::RunStatus::kOk ||
       (response.status() != cp::FEASIBLE && response.status() != cp::OPTIMAL))
     return 9;
+  for (const int workers : {1, 2}) {
+    parameters.set_num_search_workers(workers);
+    sdk::Session callback_failure;
+    if (callback_failure.Run(
+            model, parameters,
+            [](const auto&) { throw std::runtime_error("observer failure"); },
+            &response, &error) != sdk::RunStatus::kException ||
+        error != "observer failure")
+      return 10;
+  }
   return 0;
 }
