@@ -1,14 +1,8 @@
 # ref: https://github.com/actions/runner-images
 name: amd64 CMake Glop C++
 
-on:
-  push:
-    branches:
-      - main
-      - v99bugfix
-  pull_request:
-  workflow_dispatch:
-
+'on':
+  workflow_dispatch: null
 concurrency:
   group: ${{github.workflow}}-${{github.ref}}
   cancel-in-progress: true
