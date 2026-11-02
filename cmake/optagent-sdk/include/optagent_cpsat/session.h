@@ -51,7 +51,14 @@ OPTAGENT_CPSAT_EXPORT std::string ValidateParameters(
     const operations_research::sat::SatParameters& parameters);
 OPTAGENT_CPSAT_EXPORT std::string ValidateModel(
     const operations_research::sat::CpModelProto& model,
-    const operations_research::sat::SatParameters& parameters);
+    const operations_research::sat::SatParameters& parameters = {});
+
+// Run one synchronous session without external cancellation. Internal and
+// observer exceptions are reported as std::runtime_error after native teardown.
+OPTAGENT_CPSAT_EXPORT Response
+Solve(const operations_research::sat::CpModelProto& model,
+      const operations_research::sat::SatParameters& parameters,
+      const Observer& observer = {});
 
 }  // namespace optagent::cpsat_sdk
 

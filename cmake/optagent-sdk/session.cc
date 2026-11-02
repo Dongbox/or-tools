@@ -3,6 +3,7 @@
 #include <atomic>
 #include <exception>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -80,6 +81,18 @@ std::string ValidateParameters(const cp::SatParameters& parameters) {
 std::string ValidateModel(const cp::CpModelProto& model,
                           const cp::SatParameters& parameters) {
   return cp::ValidateInputCpModel(parameters, model);
+}
+
+Response Solve(const cp::CpModelProto& model,
+               const cp::SatParameters& parameters, const Observer& observer) {
+  Session session;
+  Response response;
+  std::string error;
+  if (session.Run(model, parameters, observer, &response, &error) !=
+      RunStatus::kOk) {
+    throw std::runtime_error(error);
+  }
+  return response;
 }
 
 }  // namespace optagent::cpsat_sdk

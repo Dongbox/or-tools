@@ -41,5 +41,19 @@ int main() {
   if (cancelled.Run(model, parameters, {}, &response, &error) !=
       sdk::RunStatus::kOk)
     return 5;
+  if (response.status() != cp::UNKNOWN) return 6;
+  const auto solved = sdk::Solve(model, parameters);
+  if (solved.status() != cp::OPTIMAL || solved.solution(0) != 1) return 7;
+  sdk::Session invalid;
+  if (invalid.Run(model, parameters, {}, nullptr, &error) !=
+          sdk::RunStatus::kInvalidArgument ||
+      error.empty())
+    return 8;
+  sdk::Session callback_stop;
+  if (callback_stop.Run(
+          model, parameters, [&](const auto&) { callback_stop.RequestStop(); },
+          &response, &error) != sdk::RunStatus::kOk ||
+      (response.status() != cp::FEASIBLE && response.status() != cp::OPTIMAL))
+    return 9;
   return 0;
 }
