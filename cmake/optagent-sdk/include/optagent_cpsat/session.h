@@ -15,7 +15,13 @@ namespace optagent::cpsat_sdk {
 using Response = operations_research::sat::CpSolverResponse;
 using Observer = std::function<void(const Response&)>;
 
-enum class RunStatus { kOk, kAlreadyUsed, kInvalidArgument, kException };
+enum class RunStatus {
+  kOk,
+  kAlreadyUsed,
+  kInvalidArgument,
+  kException,
+  kOutOfMemory,
+};
 
 // Own the native Model, registrations, observer and teardown inside the SDK.
 // Each instance accepts one synchronous Run. Keep it alive until Run and any
@@ -31,8 +37,9 @@ class OPTAGENT_CPSAT_EXPORT Session final {
 
   // Borrow model/parameters/observer until return. Observer responses are only
   // valid during the call; copy explicitly to retain them. Internal and
-  // callback exceptions become kException and an optional best-effort error
-  // message after native teardown. Callbacks may run on native workers; protect
+  // callback allocation failures become kOutOfMemory; other exceptions become
+  // kException. Both return an optional best-effort error message after native
+  // teardown. Callbacks may run on native workers; protect
   // application state shared with other threads.
   RunStatus Run(const operations_research::sat::CpModelProto& model,
                 const operations_research::sat::SatParameters& parameters,
@@ -55,7 +62,8 @@ OPTAGENT_CPSAT_EXPORT std::string ValidateModel(
     const operations_research::sat::SatParameters& parameters = {});
 
 // Run one synchronous session without external cancellation. Internal and
-// observer exceptions are reported as std::runtime_error after native teardown.
+// observer allocation failures become std::bad_alloc; other exceptions become
+// std::runtime_error after native teardown.
 OPTAGENT_CPSAT_EXPORT Response
 Solve(const operations_research::sat::CpModelProto& model,
       const operations_research::sat::SatParameters& parameters,

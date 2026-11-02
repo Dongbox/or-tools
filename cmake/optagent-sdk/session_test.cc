@@ -3,6 +3,7 @@
 #include <atomic>
 #include <initializer_list>
 #include <memory>
+#include <new>
 #include <stdexcept>
 #include <string>
 
@@ -73,6 +74,21 @@ int main() {
         error != "observer failure") {
       return 10;
     }
+    auto allocation_stop = std::make_shared<std::atomic<bool>>(false);
+    sdk::Session allocation_failure(allocation_stop);
+    if (allocation_failure.Run(
+            model, parameters, [](const auto&) { throw std::bad_alloc(); },
+            &response, &error) != sdk::RunStatus::kOutOfMemory ||
+        !allocation_stop->load() || error.empty()) {
+      return 11;
+    }
   }
+  bool allocation_rethrown = false;
+  try {
+    sdk::Solve(model, parameters, [](const auto&) { throw std::bad_alloc(); });
+  } catch (const std::bad_alloc&) {
+    allocation_rethrown = true;
+  }
+  if (!allocation_rethrown) return 12;
   return 0;
 }

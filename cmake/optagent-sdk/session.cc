@@ -4,6 +4,7 @@
 #include <exception>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -60,25 +61,36 @@ RunStatus Session::Run(const cp::CpModelProto& model,
     std::exception_ptr observer_error;
     std::mutex observer_error_mutex;
     cp::Model native;
-    native.Add(cp::NewSatParameters(parameters));
-    native.GetOrCreate<operations_research::TimeLimit>()
-        ->RegisterExternalBooleanAsLimit(impl_->stop.get());
-    if (observer) {
-      native.Add(
-          cp::NewFeasibleSolutionObserver([&](const Response& candidate) {
-            try {
-              observer(candidate);
-            } catch (...) {
-              std::lock_guard<std::mutex> lock(observer_error_mutex);
-              if (!observer_error) observer_error = std::current_exception();
-              impl_->stop->store(true);
-            }
-          }));
+    try {
+      native.Add(cp::NewSatParameters(parameters));
+      native.GetOrCreate<operations_research::TimeLimit>()
+          ->RegisterExternalBooleanAsLimit(impl_->stop.get());
+      if (observer) {
+        native.Add(
+            cp::NewFeasibleSolutionObserver([&](const Response& candidate) {
+              try {
+                observer(candidate);
+              } catch (...) {
+                std::lock_guard<std::mutex> lock(observer_error_mutex);
+                if (!observer_error) observer_error = std::current_exception();
+                impl_->stop->store(true);
+              }
+            }));
+      }
+      *response = cp::SolveCpModel(model, &native);
+      if (observer_error) std::rethrow_exception(observer_error);
+    } catch (...) {
+      // Signal before Model teardown joins workers, including when the native
+      // solve itself fails rather than an observer.
+      impl_->stop->store(true);
+      throw;
     }
-    *response = cp::SolveCpModel(model, &native);
-    if (observer_error) std::rethrow_exception(observer_error);
     if (error != nullptr) error->clear();
     return RunStatus::kOk;
+  } catch (const std::bad_alloc&) {
+    impl_->stop->store(true);
+    SetError(error, "CP-SAT allocation failed");
+    return RunStatus::kOutOfMemory;
   } catch (const std::exception& exception) {
     impl_->stop->store(true);
     SetError(error, exception.what());
@@ -105,8 +117,10 @@ Response Solve(const cp::CpModelProto& model,
   Session session;
   Response response;
   std::string error;
-  if (session.Run(model, parameters, observer, &response, &error) !=
-      RunStatus::kOk) {
+  const auto status =
+      session.Run(model, parameters, observer, &response, &error);
+  if (status == RunStatus::kOutOfMemory) throw std::bad_alloc();
+  if (status != RunStatus::kOk) {
     throw std::runtime_error(error);
   }
   return response;
