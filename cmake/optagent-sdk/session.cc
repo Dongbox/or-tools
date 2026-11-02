@@ -8,10 +8,12 @@
 #include <string>
 #include <utility>
 
+#include "ortools/sat/cp_model.pb.h"
 #include "ortools/sat/cp_model_checker.h"
 #include "ortools/sat/cp_model_solver.h"
 #include "ortools/sat/model.h"
 #include "ortools/sat/parameters_validation.h"
+#include "ortools/sat/sat_parameters.pb.h"
 #include "ortools/util/time_limit.h"
 
 namespace optagent::cpsat_sdk {

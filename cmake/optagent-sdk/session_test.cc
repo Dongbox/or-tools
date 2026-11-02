@@ -21,8 +21,9 @@ int main() {
   cp::SatParameters parameters;
   parameters.set_num_search_workers(1);
   if (!sdk::ValidateParameters(parameters).empty() ||
-      !sdk::ValidateModel(model, parameters).empty())
+      !sdk::ValidateModel(model, parameters).empty()) {
     return 1;
+  }
   sdk::Session session;
   cp::CpSolverResponse response;
   std::string error;
@@ -31,32 +32,37 @@ int main() {
       model, parameters, [&](const auto&) { ++candidates; }, &response, &error);
   if (status != sdk::RunStatus::kOk || !error.empty() ||
       response.status() != cp::OPTIMAL || response.solution_size() != 1 ||
-      response.solution(0) != 1 || candidates == 0)
+      response.solution(0) != 1 || candidates == 0) {
     return 2;
+  }
   if (session.Run(model, parameters, {}, &response, &error) !=
-      sdk::RunStatus::kAlreadyUsed)
+      sdk::RunStatus::kAlreadyUsed) {
     return 3;
+  }
   auto flag = std::make_shared<std::atomic<bool>>(false);
   sdk::Session cancelled(flag);
   cancelled.RequestStop();
   if (!flag->load()) return 4;
   if (cancelled.Run(model, parameters, {}, &response, &error) !=
-      sdk::RunStatus::kOk)
+      sdk::RunStatus::kOk) {
     return 5;
+  }
   if (response.status() != cp::UNKNOWN) return 6;
   const auto solved = sdk::Solve(model, parameters);
   if (solved.status() != cp::OPTIMAL || solved.solution(0) != 1) return 7;
   sdk::Session invalid;
   if (invalid.Run(model, parameters, {}, nullptr, &error) !=
           sdk::RunStatus::kInvalidArgument ||
-      error.empty())
+      error.empty()) {
     return 8;
+  }
   sdk::Session callback_stop;
   if (callback_stop.Run(
           model, parameters, [&](const auto&) { callback_stop.RequestStop(); },
           &response, &error) != sdk::RunStatus::kOk ||
-      (response.status() != cp::FEASIBLE && response.status() != cp::OPTIMAL))
+      (response.status() != cp::FEASIBLE && response.status() != cp::OPTIMAL)) {
     return 9;
+  }
   for (const int workers : {1, 2}) {
     parameters.set_num_search_workers(workers);
     sdk::Session callback_failure;
@@ -64,8 +70,9 @@ int main() {
             model, parameters,
             [](const auto&) { throw std::runtime_error("observer failure"); },
             &response, &error) != sdk::RunStatus::kException ||
-        error != "observer failure")
+        error != "observer failure") {
       return 10;
+    }
   }
   return 0;
 }
