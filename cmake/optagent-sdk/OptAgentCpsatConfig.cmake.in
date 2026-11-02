@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+find_dependency(absl CONFIG)
+find_dependency(protobuf 33.1.0 EXACT CONFIG)
+find_dependency(OptAgentSupport CONFIG)
+find_dependency(Threads)
+include("${CMAKE_CURRENT_LIST_DIR}/OptAgentCpsatTargets.cmake")
